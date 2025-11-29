@@ -129,7 +129,6 @@
     input[type="text"],
     input[type="password"],
     input[type="number"],
-    select,
     textarea {
       width: 100%;
       padding: 7px 8px;
@@ -145,7 +144,6 @@
     input[type="text"]:focus,
     input[type="password"]:focus,
     input[type="number"]:focus,
-    select:focus,
     textarea:focus {
       outline: none;
       border-color: var(--accent);
@@ -264,7 +262,6 @@
       flex-wrap: wrap;
     }
 
-    /* Library grid cards */
     .library-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -450,7 +447,7 @@
       </div>
 
       <div class="login-meta">
-        Admin access only. Changes are stored in this browser using local storage.
+        Admin access only. Changes are saved to a shared Google Sheet.
       </div>
     </div>
   </div>
@@ -476,7 +473,7 @@
           <span>Admin only</span>
         </h2>
         <p class="card-subtitle">
-          Username: <b>WEHSMUSIC</b> &nbsp; Password: <b>WehsMusicLibrary</b> (already used to log in).
+          Username: <b>WEHSMUSIC</b> &nbsp; Password: <b>WehsMusicLibrary</b>.
         </p>
 
         <form id="entry-form">
@@ -534,7 +531,7 @@
             <label for="coverUrl">Cover image URL</label>
             <input id="coverUrl" type="text" placeholder="Link to a score cover image or folder photo" />
             <div class="helper-text">
-              Optional. Paste a URL to an image. If empty or broken, a simple color block will show.
+              Optional. If empty or broken, a simple color block will show.
             </div>
           </div>
 
@@ -569,13 +566,11 @@
           <div class="pill" id="count-pill">0 items</div>
         </div>
 
-        <div id="library-grid" class="library-grid">
-          <!-- cards injected here -->
-        </div>
+        <div id="library-grid" class="library-grid"></div>
 
         <div class="footer-bar">
-          <div>
-            <span>Saved in this browser using local storage.</span>
+          <div id="status-text">
+            Using shared Google Sheet backend.
           </div>
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn-secondary" id="undo-btn" disabled>Undo last delete</button>
@@ -586,16 +581,16 @@
   </div>
 
   <script>
-    // Hard-coded login (front-end only)
+    // === CONFIG ===
+    const API_URL = "https://script.google.com/a/macros/williamsvillek12.org/s/AKfycbxRkd_7kDg6x_B-b6yz9-TpInwZcjLQees0CWSkfbBY5qNu8biJZ55nO_NrF97k1OMV/exec";
+
     const ADMIN_USERNAME = "WEHSMUSIC";
     const ADMIN_PASSWORD = "WehsMusicLibrary";
     const LOGIN_KEY = "wehsMusicLoggedIn";
 
     let library = [];
     let currentFilter = "";
-    let lastDeleted = null; // { item, index }
-
-    const STORAGE_KEY = "musicLibrary_cards_v2";
+    let lastDeleted = null; // stores last deleted item for undo
 
     const loginScreen = document.getElementById("login-screen");
     const app = document.getElementById("app");
@@ -609,6 +604,7 @@
     const grid = document.getElementById("library-grid");
     const countPill = document.getElementById("count-pill");
     const undoBtn = document.getElementById("undo-btn");
+    const statusText = document.getElementById("status-text");
 
     function escapeHtml(str) {
       if (str == null) return "";
@@ -621,30 +617,77 @@
         .replace(/'/g, "&#039;");
     }
 
-    function loadLibrary() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const data = JSON.parse(raw);
-          if (Array.isArray(data)) {
-            library = data;
-          }
-        }
-      } catch (err) {
-        console.error("Error loading library", err);
-      }
+    function showApp() {
+      loginScreen.classList.add("hidden");
+      app.classList.remove("hidden");
     }
 
-    function saveLibrary() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(library));
-      } catch (err) {
-        console.error("Error saving library", err);
-      }
+    function showLogin() {
+      app.classList.add("hidden");
+      loginScreen.classList.remove("hidden");
     }
 
     function updateUndoButton() {
       undoBtn.disabled = !lastDeleted;
+    }
+
+    async function fetchLibrary() {
+      try {
+        statusText.textContent = "Loading library…";
+        const res = await fetch(API_URL);
+        const json = await res.json();
+        library = Array.isArray(json.data) ? json.data : [];
+        // ensure all items have string ids
+        library = library.map(item => ({
+          ...item,
+          id: item.id ? String(item.id) : String(item.createdAt || Date.now())
+        }));
+        renderGrid();
+        statusText.textContent = "Library loaded.";
+      } catch (err) {
+        console.error("Error loading library", err);
+        statusText.textContent = "Error loading library from Google Sheets.";
+        grid.innerHTML = "";
+        const div = document.createElement("div");
+        div.style.fontSize = "0.85rem";
+        div.style.color = "var(--text-muted)";
+        div.textContent = "Could not load library. Check your internet connection or script permissions.";
+        grid.appendChild(div);
+      }
+    }
+
+    async function addEntryToSheet(entry) {
+      try {
+        statusText.textContent = "Saving piece…";
+        await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "add", item: entry })
+        });
+        statusText.textContent = "Saved.";
+        await fetchLibrary();
+      } catch (err) {
+        console.error("Error adding piece", err);
+        statusText.textContent = "Error saving piece to Google Sheets.";
+        alert("There was a problem saving this piece. Please try again.");
+      }
+    }
+
+    async function deleteEntryFromSheet(id) {
+      try {
+        statusText.textContent = "Deleting piece…";
+        await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", id })
+        });
+        statusText.textContent = "Deleted.";
+        await fetchLibrary();
+      } catch (err) {
+        console.error("Error deleting piece", err);
+        statusText.textContent = "Error deleting piece from Google Sheets.";
+        alert("There was a problem deleting this piece. Please try again.");
+      }
     }
 
     function renderGrid() {
@@ -695,7 +738,7 @@
             img.src = item.coverUrl;
             img.alt = item.title || "Cover";
             img.onerror = () => {
-              cover.innerHTML = `<div>${escapeHtml(item.title || "Score cover")}</div>`;
+              cover.textContent = item.title || "Score cover";
             };
             cover.appendChild(img);
           } else {
@@ -707,11 +750,11 @@
 
           const title = document.createElement("div");
           title.className = "piece-title";
-          title.textContent = item.title;
+          title.textContent = item.title || "";
 
           const composer = document.createElement("div");
           composer.className = "piece-composer";
-          composer.textContent = item.composer;
+          composer.textContent = item.composer || "";
 
           const instr = document.createElement("div");
           instr.className = "piece-instrumentation";
@@ -775,37 +818,24 @@
       updateUndoButton();
     }
 
-    function handleDelete(id) {
-      const index = library.findIndex((item) => (item.id || item.createdAt) === id);
-      if (index === -1) return;
-
-      const [deleted] = library.splice(index, 1);
-      lastDeleted = { item: deleted, index };
-      saveLibrary();
-      renderGrid();
+    async function handleDelete(id) {
+      const item = library.find((entry) => String(entry.id) === String(id));
+      if (!item) return;
+      lastDeleted = item;
+      updateUndoButton();
+      await deleteEntryFromSheet(id);
     }
 
-    function handleUndo() {
+    async function handleUndo() {
       if (!lastDeleted) return;
-      const { item, index } = lastDeleted;
-      library.splice(index, 0, item);
+      const itemToRestore = { ...lastDeleted };
       lastDeleted = null;
-      saveLibrary();
-      renderGrid();
+      updateUndoButton();
+      await addEntryToSheet(itemToRestore);
     }
 
     // Login handling
-    function showApp() {
-      loginScreen.classList.add("hidden");
-      app.classList.remove("hidden");
-    }
-
-    function showLogin() {
-      app.classList.add("hidden");
-      loginScreen.classList.remove("hidden");
-    }
-
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const username = document.getElementById("login-username").value.trim();
       const password = document.getElementById("login-password").value;
@@ -814,8 +844,7 @@
         localStorage.setItem(LOGIN_KEY, "true");
         loginError.classList.add("hidden");
         showApp();
-        loadLibrary();
-        renderGrid();
+        await fetchLibrary();
       } else {
         loginError.classList.remove("hidden");
       }
@@ -826,8 +855,8 @@
       showLogin();
     });
 
-    // Library form handlers
-    form.addEventListener("submit", (e) => {
+    // Form handlers
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const title = document.getElementById("title").value.trim();
@@ -838,8 +867,9 @@
         return;
       }
 
+      const now = new Date();
       const entry = {
-        id: Date.now(),
+        id: Date.now().toString(),
         title,
         composer,
         arranger: document.getElementById("arranger").value.trim(),
@@ -852,14 +882,13 @@
         location: document.getElementById("location").value.trim(),
         coverUrl: document.getElementById("coverUrl").value.trim(),
         notes: document.getElementById("notes").value.trim(),
-        createdAt: Date.now()
+        createdAt: now.toISOString()
       };
 
-      library.push(entry);
-      lastDeleted = null; // adding something clears undo state
-      saveLibrary();
+      lastDeleted = null; // new add clears undo state
+      updateUndoButton();
+      await addEntryToSheet(entry);
       form.reset();
-      renderGrid();
     });
 
     clearFormBtn.addEventListener("click", () => {
@@ -873,13 +902,12 @@
 
     undoBtn.addEventListener("click", handleUndo);
 
-    // On load: check login state
-    (function init() {
+    // Init
+    (async function init() {
       const loggedIn = localStorage.getItem(LOGIN_KEY) === "true";
       if (loggedIn) {
         showApp();
-        loadLibrary();
-        renderGrid();
+        await fetchLibrary();
       } else {
         showLogin();
       }
