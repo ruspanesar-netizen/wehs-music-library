@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WEHS Music Library</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --accent: #3b82f6;
+      --accent-soft: #dbeafe;
+      --border: #e5e7eb;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --danger: #dc2626;
+      --radius-lg: 14px;
+      --shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at top, #eff6ff 0, #f5f5f7 40%, #f9fafb 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 24px auto 40px;
+      padding: 0 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #1d4ed8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #bfdbfe;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      padding: 18px 18px 16px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card h2 span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .card-subtitle {
+      margin: 0 0 14px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px 14px;
+    }
+
+    .field-full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+      color: var(--text-muted);
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 7px 8px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      font-size: 0.85rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      resize: vertical;
+      max-height: 120px;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+    }
+
+    .helper-text {
+      margin-top: 2px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      font-size: 0.85rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #f9fafb;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .btn-link {
+      background: transparent;
+      color: var(--text-muted);
+      padding-inline: 4px;
+      box-shadow: none;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+
+    .table-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 160px;
+      max-width: 260px;
+    }
+
+    .search-box input {
+      padding-left: 26px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      font-size: 0.82rem;
+    }
+
+    .search-box span {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .pill {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .footer-bar {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Library grid cards */
+    .library-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 4px;
+    }
+
+    .piece-card {
+      background: #f9fafb;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 220px;
+    }
+
+    .piece-cover {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(135deg, #111827, #4b5563);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f9fafb;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .piece-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .piece-body {
+      padding: 10px 11px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .piece-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .piece-composer {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      background: #ecfdf5;
+      color: #047857;
+    }
+
+    .tag-muted {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .piece-notes {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      max-height: 3.5em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .piece-meta {
+      margin-top: auto;
+      font-size: 0.72rem;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    /* Login screen */
+    .center-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .login-card {
+      max-width: 360px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
+      padding: 20px 20px 16px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .login-card h1 {
+      margin: 0 0 4px;
+      font-size: 1.4rem;
+    }
+
+    .login-card p {
+      margin: 0 0 14px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .login-meta {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .error-text {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: var(--danger);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login screen -->
+  <div id="login-screen" class="center-wrapper">
+    <div class="login-card">
+      <h1>WEHS Music Library</h1>
+      <p>Sign in to manage the digital music collection.</p>
+
+      <form id="login-form">
+        <div class="field-full">
+          <label for="login-username">Username</label>
+          <input id="login-username" type="text" autocomplete="username" />
+        </div>
+        <div class="field-full" style="margin-top: 8px;">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" autocomplete="current-password" />
+        </div>
+        <div class="actions" style="margin-top: 10px; justify-content: space-between;">
+          <div></div>
+          <button type="submit" class="btn-primary">Log in</button>
+        </div>
+      </form>
+
+      <div id="login-error" class="error-text hidden">
+        Incorrect username or password. Try again.
+      </div>
+
+      <div class="login-meta">
+        Admin access only. Changes are stored in this browser using local storage.
+      </div>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="page hidden">
+    <header>
+      <div>
+        <h1>WEHS Music Library</h1>
+        <p>Digitized scores, parts and recordings for the program.</p>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <div class="badge">Admin dashboard</div>
+        <button type="button" id="logout-btn" class="btn-link">Log out</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Form card -->
+      <section class="card">
+        <h2>
+          Add piece
+          <span>Admin only</span>
+        </h2>
+        <p class="card-subtitle">
+          Username: <b>WEHSMUSIC</b> &nbsp; Password: <b>WehsMusicLibrary</b> (already used to log in).
+        </p>
+
+        <form id="entry-form">
+          <div class="field-full">
+            <label for="title">Title *</label>
+            <input id="title" type="text" required />
+          </div>
+
+          <div>
+            <label for="composer">Composer *</label>
+            <input id="composer" type="text" required />
+          </div>
+
+          <div>
+            <label for="arranger">Arranger</label>
+            <input id="arranger" type="text" />
+          </div>
+
+          <div>
+            <label for="instrumentation">Instrumentation</label>
+            <input id="instrumentation" type="text" placeholder="String quartet, concert band, solo voice..." />
+          </div>
+
+          <div>
+            <label for="ensemble">Ensemble / Group</label>
+            <input id="ensemble" type="text" placeholder="WEHS Choir, WEHS Wind Ensemble, etc." />
+          </div>
+
+          <div>
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="">Select</option>
+              <option>Choral</option>
+              <option>Band / Wind</option>
+              <option>Orchestral</option>
+              <option>Chamber</option>
+              <option>Solo</option>
+              <option>Vocal</option>
+              <option>Jazz</option>
+              <option>Contemporary</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="difficulty">Difficulty</label>
+            <select id="difficulty">
+              <option value="">Select</option>
+              <option>Beginner</option>
+              <option>Intermediate</option>
+              <option>Advanced</option>
+              <option>Professional</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="key">Key</label>
+            <input id="key" type="text" placeholder="D minor, Bb major..." />
+          </div>
+
+          <div>
+            <label for="year">Year</label>
+            <input id="year" type="number" min="1000" max="3000" />
+          </div>
+
+          <div>
+            <label for="callNumber">Call number / ID</label>
+            <input id="callNumber" type="text" />
+          </div>
+
+          <div>
+            <label for="location">Physical location</label>
+            <input id="location" type="text" placeholder="Shelf B3, Box 4, Folder 2..." />
+          </div>
+
+          <div class="field-full">
+            <label for="coverUrl">Cover image URL</label>
+            <input id="coverUrl" type="text" placeholder="Link to a score cover image or folder photo" />
+            <div class="helper-text">
+              Optional. Paste a URL to an image (e.g. Google Drive shared image, Imgur, etc.). If empty or broken, a simple color block will show.
+            </div>
+          </div>
+
+          <div class="field-full">
+            <label for="notes">Notes</label>
+            <textarea id="notes" rows="2" placeholder="Edition, special instructions, missing parts, etc."></textarea>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn-secondary" id="clear-form-btn">Clear form</button>
+            <button type="submit" class="btn-primary">Add to library</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Cards view -->
+      <section class="card">
+        <h2>
+          Library view
+          <span>Card view with covers</span>
+        </h2>
+
+        <div class="table-header">
+          <div class="search-box">
+            <span>🔍</span>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search by title, composer, ensemble, notes..."
+            />
+          </div>
+          <div class="pill" id="count-pill">0 items</div>
+        </div>
+
+        <div id="library-grid" class="library-grid">
+          <!-- cards injected here -->
+        </div>
+
+        <div class="footer-bar">
+          <div>
+            <span>Saved in this browser using local storage.</span>
+          </div>
+          <div>
+            <button type="button" class="btn-danger" id="clear-library-btn">Clear entire library</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Hard-coded login (front-end only, not secure for sensitive data)
+    const ADMIN_USERNAME = "WEHSMUSIC";
+    const ADMIN_PASSWORD = "WehsMusicLibrary";
+    const LOGIN_KEY = "wehsMusicLoggedIn";
+
+    let library = [];
+    let currentFilter = "";
+
+    const STORAGE_KEY = "musicLibrary_cards_v1";
+
+    const loginScreen = document.getElementById("login-screen");
+    const app = document.getElementById("app");
+    const loginForm = document.getElementById("login-form");
+    const loginError = document.getElementById("login-error");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    const form = document.getElementById("entry-form");
+    const clearFormBtn = document.getElementById("clear-form-btn");
+    const clearLibraryBtn = document.getElementById("clear-library-btn");
+    const searchInput = document.getElementById("search-input");
+    const grid = document.getElementById("library-grid");
+    const countPill = document.getElementById("count-pill");
+
+    function escapeHtml(str) {
+      if (str == null) return "";
+      return str
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function loadLibrary() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (Array.isArray(data)) {
+            library = data;
+          }
+        }
+      } catch (err) {
+        console.error("Error loading library", err);
+      }
+    }
+
+    function saveLibrary() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(library));
+      } catch (err) {
+        console.error("Error saving library", err);
+      }
+    }
+
+    function renderGrid() {
+      grid.innerHTML = "";
+
+      const normalizedFilter = currentFilter.trim().toLowerCase();
+      let rows = library.slice();
+
+      if (normalizedFilter) {
+        rows = rows.filter((item) => {
+          const haystack = [
+            item.title,
+            item.composer,
+            item.arranger,
+            item.instrumentation,
+            item.ensemble,
+            item.category,
+            item.location,
+            item.callNumber,
+            item.notes
+          ]
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(normalizedFilter);
+        });
+      }
+
+      if (rows.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.fontSize = "0.85rem";
+        empty.style.color = "var(--text-muted)";
+        empty.textContent = "No items yet. Add a piece on the left.";
+        grid.appendChild(empty);
+      } else {
+        rows.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "piece-card";
+
+          const cover = document.createElement("div");
+          cover.className = "piece-cover";
+
+          if (item.coverUrl) {
+            const img = document.createElement("img");
+            img.src = item.coverUrl;
+            img.alt = item.title || "Cover";
+            img.onerror = () => {
+              cover.innerHTML = `<div>${escapeHtml(item.title || "Score cover")}</div>`;
+            };
+            cover.appendChild(img);
+          } else {
+            cover.textContent = item.title || "Score cover";
+          }
+
+          const body = document.createElement("div");
+          body.className = "piece-body";
+
+          const title = document.createElement("div");
+          title.className = "piece-title";
+          title.textContent = item.title;
+
+          const composer = document.createElement("div");
+          composer.className = "piece-composer";
+          composer.textContent = item.composer;
+
+          const tagRow = document.createElement("div");
+          tagRow.className = "tag-row";
+
+          if (item.category) {
+            const t = document.createElement("span");
+            t.className = "tag";
+            t.textContent = item.category;
+            tagRow.appendChild(t);
+          }
+
+          if (item.ensemble) {
+            const t2 = document.createElement("span");
+            t2.className = "tag tag-muted";
+            t2.textContent = item.ensemble;
+            tagRow.appendChild(t2);
+          }
+
+          if (item.difficulty) {
+            const t3 = document.createElement("span");
+            t3.className = "tag tag-muted";
+            t3.textContent = item.difficulty;
+            tagRow.appendChild(t3);
+          }
+
+          const notes = document.createElement("div");
+          notes.className = "piece-notes";
+          notes.textContent = item.notes;
+
+          const meta = document.createElement("div");
+          meta.className = "piece-meta";
+          const leftMeta = document.createElement("div");
+          leftMeta.textContent = item.location ? `Loc: ${item.location}` : "";
+          const rightMeta = document.createElement("div");
+          const bits = [];
+          if (item.callNumber) bits.push(item.callNumber);
+          if (item.year) bits.push(item.year);
+          rightMeta.textContent = bits.join(" · ");
+          meta.appendChild(leftMeta);
+          meta.appendChild(rightMeta);
+
+          body.appendChild(title);
+          body.appendChild(composer);
+          if (tagRow.children.length > 0) body.appendChild(tagRow);
+          if (item.notes) body.appendChild(notes);
+          body.appendChild(meta);
+
+          card.appendChild(cover);
+          card.appendChild(body);
+          grid.appendChild(card);
+        });
+      }
+
+      countPill.textContent = `${library.length} item${library.length === 1 ? "" : "s"}`;
+    }
+
+    // Login handling
+    function showApp() {
+      loginScreen.classList.add("hidden");
+      app.classList.remove("hidden");
+    }
+
+    function showLogin() {
+      app.classList.add("hidden");
+      loginScreen.classList.remove("hidden");
+    }
+
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const username = document.getElementById("login-username").value.trim();
+      const password = document.getElementById("login-password").value;
+
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        localStorage.setItem(LOGIN_KEY, "true");
+        loginError.classList.add("hidden");
+        showApp();
+        loadLibrary();
+        renderGrid();
+      } else {
+        loginError.classList.remove("hidden");
+      }
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem(LOGIN_KEY);
+      showLogin();
+    });
+
+    // Library form handlers
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById("title").value.trim();
+      const composer = document.getElementById("composer").value.trim();
+
+      if (!title || !composer) {
+        alert("Please fill in at least the title and composer.");
+        return;
+      }
+
+      const entry = {
+        title,
+        composer,
+        arranger: document.getElementById("arranger").value.trim(),
+        instrumentation: document.getElementById("instrumentation").value.trim(),
+        ensemble: document.getElementById("ensemble").value.trim(),
+        category: document.getElementById("category").value,
+        difficulty: document.getElementById("difficulty").value,
+        key: document.getElementById("key").value.trim(),
+        year: document.getElementById("year").value.trim(),
+        callNumber: document.getElementById("callNumber").value.trim(),
+        location: document.getElementById("location").value.trim(),
+        coverUrl: document.getElementById("coverUrl").value.trim(),
+        notes: document.getElementById("notes").value.trim(),
+        createdAt: Date.now()
+      };
+
+      library.push(entry);
+      saveLibrary();
+      form.reset();
+      renderGrid();
+    });
+
+    clearFormBtn.addEventListener("click", () => {
+      form.reset();
+    });
+
+    clearLibraryBtn.addEventListener("click", () => {
+      const ok = confirm(
+        "This will clear every entry in your music library on this browser. Continue?"
+      );
+      if (!ok) return;
+      library = [];
+      saveLibrary();
+      renderGrid();
+    });
+
+    searchInput.addEventListener("input", (e) => {
+      currentFilter = e.target.value;
+      renderGrid();
+    });
+
+    // On load: check login state
+    (function init() {
+      const loggedIn = localStorage.getItem(LOGIN_KEY) === "true";
+      if (loggedIn) {
+        showApp();
+        loadLibrary();
+        renderGrid();
+      } else {
+        showLogin();
+      }
+    })();
+  </script>
+</body>
+</html>
