@@ -202,7 +202,13 @@
       box-shadow: none;
     }
 
-    button:active {
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    button:active:not(:disabled) {
       transform: translateY(1px);
       box-shadow: none;
     }
@@ -314,6 +320,11 @@
       color: var(--text-muted);
     }
 
+    .piece-instrumentation {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
     .tag-row {
       display: flex;
       flex-wrap: wrap;
@@ -327,11 +338,6 @@
       padding: 2px 7px;
       border-radius: 999px;
       font-size: 0.7rem;
-      background: #ecfdf5;
-      color: #047857;
-    }
-
-    .tag-muted {
       background: #eff6ff;
       color: #1d4ed8;
     }
@@ -352,9 +358,25 @@
       display: flex;
       justify-content: space-between;
       gap: 4px;
+      align-items: center;
     }
 
-    /* Login screen */
+    .piece-meta-left {
+      flex: 1;
+    }
+
+    .piece-meta-right {
+      text-align: right;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .piece-actions {
+      margin-top: 6px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
     .center-wrapper {
       min-height: 100vh;
       display: flex;
@@ -484,40 +506,18 @@
           </div>
 
           <div>
-            <label for="category">Category</label>
-            <select id="category">
-              <option value="">Select</option>
-              <option>Choral</option>
-              <option>Band / Wind</option>
-              <option>Orchestral</option>
-              <option>Chamber</option>
-              <option>Solo</option>
-              <option>Vocal</option>
-              <option>Jazz</option>
-              <option>Contemporary</option>
-              <option>Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="difficulty">Difficulty</label>
-            <select id="difficulty">
-              <option value="">Select</option>
-              <option>Beginner</option>
-              <option>Intermediate</option>
-              <option>Advanced</option>
-              <option>Professional</option>
-            </select>
-          </div>
-
-          <div>
             <label for="key">Key</label>
             <input id="key" type="text" placeholder="D minor, Bb major..." />
           </div>
 
           <div>
-            <label for="year">Year</label>
-            <input id="year" type="number" min="1000" max="3000" />
+            <label for="dateLastPerformed">Date last performed</label>
+            <input id="dateLastPerformed" type="text" placeholder="Spring 2024, 10/15/2023, etc." />
+          </div>
+
+          <div>
+            <label for="copies">How many copies</label>
+            <input id="copies" type="number" min="0" step="1" />
           </div>
 
           <div>
@@ -534,7 +534,7 @@
             <label for="coverUrl">Cover image URL</label>
             <input id="coverUrl" type="text" placeholder="Link to a score cover image or folder photo" />
             <div class="helper-text">
-              Optional. Paste a URL to an image (e.g. Google Drive shared image, Imgur, etc.). If empty or broken, a simple color block will show.
+              Optional. Paste a URL to an image. If empty or broken, a simple color block will show.
             </div>
           </div>
 
@@ -577,8 +577,8 @@
           <div>
             <span>Saved in this browser using local storage.</span>
           </div>
-          <div>
-            <button type="button" class="btn-danger" id="clear-library-btn">Clear entire library</button>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn-secondary" id="undo-btn" disabled>Undo last delete</button>
           </div>
         </div>
       </section>
@@ -586,15 +586,16 @@
   </div>
 
   <script>
-    // Hard-coded login (front-end only, not secure for sensitive data)
+    // Hard-coded login (front-end only)
     const ADMIN_USERNAME = "WEHSMUSIC";
     const ADMIN_PASSWORD = "WehsMusicLibrary";
     const LOGIN_KEY = "wehsMusicLoggedIn";
 
     let library = [];
     let currentFilter = "";
+    let lastDeleted = null; // { item, index }
 
-    const STORAGE_KEY = "musicLibrary_cards_v1";
+    const STORAGE_KEY = "musicLibrary_cards_v2";
 
     const loginScreen = document.getElementById("login-screen");
     const app = document.getElementById("app");
@@ -604,10 +605,10 @@
 
     const form = document.getElementById("entry-form");
     const clearFormBtn = document.getElementById("clear-form-btn");
-    const clearLibraryBtn = document.getElementById("clear-library-btn");
     const searchInput = document.getElementById("search-input");
     const grid = document.getElementById("library-grid");
     const countPill = document.getElementById("count-pill");
+    const undoBtn = document.getElementById("undo-btn");
 
     function escapeHtml(str) {
       if (str == null) return "";
@@ -642,6 +643,10 @@
       }
     }
 
+    function updateUndoButton() {
+      undoBtn.disabled = !lastDeleted;
+    }
+
     function renderGrid() {
       grid.innerHTML = "";
 
@@ -656,7 +661,9 @@
             item.arranger,
             item.instrumentation,
             item.ensemble,
-            item.category,
+            item.key,
+            item.dateLastPerformed,
+            item.copies,
             item.location,
             item.callNumber,
             item.notes
@@ -677,6 +684,8 @@
         rows.forEach((item) => {
           const card = document.createElement("div");
           card.className = "piece-card";
+          const id = item.id || item.createdAt || Date.now();
+          card.dataset.id = id;
 
           const cover = document.createElement("div");
           cover.className = "piece-cover";
@@ -704,51 +713,57 @@
           composer.className = "piece-composer";
           composer.textContent = item.composer;
 
+          const instr = document.createElement("div");
+          instr.className = "piece-instrumentation";
+          instr.textContent = item.instrumentation || "";
+
           const tagRow = document.createElement("div");
           tagRow.className = "tag-row";
 
-          if (item.category) {
+          if (item.ensemble) {
             const t = document.createElement("span");
             t.className = "tag";
-            t.textContent = item.category;
+            t.textContent = item.ensemble;
             tagRow.appendChild(t);
-          }
-
-          if (item.ensemble) {
-            const t2 = document.createElement("span");
-            t2.className = "tag tag-muted";
-            t2.textContent = item.ensemble;
-            tagRow.appendChild(t2);
-          }
-
-          if (item.difficulty) {
-            const t3 = document.createElement("span");
-            t3.className = "tag tag-muted";
-            t3.textContent = item.difficulty;
-            tagRow.appendChild(t3);
           }
 
           const notes = document.createElement("div");
           notes.className = "piece-notes";
-          notes.textContent = item.notes;
+          notes.textContent = item.notes || "";
 
           const meta = document.createElement("div");
           meta.className = "piece-meta";
-          const leftMeta = document.createElement("div");
-          leftMeta.textContent = item.location ? `Loc: ${item.location}` : "";
-          const rightMeta = document.createElement("div");
+
+          const metaLeft = document.createElement("div");
+          metaLeft.className = "piece-meta-left";
+          metaLeft.textContent = item.location ? `Loc: ${item.location}` : "";
+
+          const metaRight = document.createElement("div");
+          metaRight.className = "piece-meta-right";
           const bits = [];
-          if (item.callNumber) bits.push(item.callNumber);
-          if (item.year) bits.push(item.year);
-          rightMeta.textContent = bits.join(" · ");
-          meta.appendChild(leftMeta);
-          meta.appendChild(rightMeta);
+          if (item.copies) bits.push(`Copies: ${item.copies}`);
+          if (item.dateLastPerformed) bits.push(item.dateLastPerformed);
+          metaRight.textContent = bits.join(" · ");
+
+          meta.appendChild(metaLeft);
+          meta.appendChild(metaRight);
+
+          const actionsRow = document.createElement("div");
+          actionsRow.className = "piece-actions";
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "btn-danger";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.addEventListener("click", () => handleDelete(id));
+          actionsRow.appendChild(deleteBtn);
 
           body.appendChild(title);
           body.appendChild(composer);
+          if (item.instrumentation) body.appendChild(instr);
           if (tagRow.children.length > 0) body.appendChild(tagRow);
           if (item.notes) body.appendChild(notes);
           body.appendChild(meta);
+          body.appendChild(actionsRow);
 
           card.appendChild(cover);
           card.appendChild(body);
@@ -757,6 +772,26 @@
       }
 
       countPill.textContent = `${library.length} item${library.length === 1 ? "" : "s"}`;
+      updateUndoButton();
+    }
+
+    function handleDelete(id) {
+      const index = library.findIndex((item) => (item.id || item.createdAt) === id);
+      if (index === -1) return;
+
+      const [deleted] = library.splice(index, 1);
+      lastDeleted = { item: deleted, index };
+      saveLibrary();
+      renderGrid();
+    }
+
+    function handleUndo() {
+      if (!lastDeleted) return;
+      const { item, index } = lastDeleted;
+      library.splice(index, 0, item);
+      lastDeleted = null;
+      saveLibrary();
+      renderGrid();
     }
 
     // Login handling
@@ -804,15 +839,15 @@
       }
 
       const entry = {
+        id: Date.now(),
         title,
         composer,
         arranger: document.getElementById("arranger").value.trim(),
         instrumentation: document.getElementById("instrumentation").value.trim(),
         ensemble: document.getElementById("ensemble").value.trim(),
-        category: document.getElementById("category").value,
-        difficulty: document.getElementById("difficulty").value,
         key: document.getElementById("key").value.trim(),
-        year: document.getElementById("year").value.trim(),
+        dateLastPerformed: document.getElementById("dateLastPerformed").value.trim(),
+        copies: document.getElementById("copies").value.trim(),
         callNumber: document.getElementById("callNumber").value.trim(),
         location: document.getElementById("location").value.trim(),
         coverUrl: document.getElementById("coverUrl").value.trim(),
@@ -821,6 +856,7 @@
       };
 
       library.push(entry);
+      lastDeleted = null; // adding something clears undo state
       saveLibrary();
       form.reset();
       renderGrid();
@@ -830,20 +866,12 @@
       form.reset();
     });
 
-    clearLibraryBtn.addEventListener("click", () => {
-      const ok = confirm(
-        "This will clear every entry in your music library on this browser. Continue?"
-      );
-      if (!ok) return;
-      library = [];
-      saveLibrary();
-      renderGrid();
-    });
-
     searchInput.addEventListener("input", (e) => {
       currentFilter = e.target.value;
       renderGrid();
     });
+
+    undoBtn.addEventListener("click", handleUndo);
 
     // On load: check login state
     (function init() {
@@ -859,3 +887,4 @@
   </script>
 </body>
 </html>
+
