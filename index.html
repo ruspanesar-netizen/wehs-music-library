@@ -195,7 +195,7 @@
 
     .btn-link {
       background: transparent;
-      color: var(--text-muted);
+      color: #6b7280;
       padding-inline: 4px;
       box-shadow: none;
     }
@@ -590,7 +590,7 @@
 
     let library = [];
     let currentFilter = "";
-    let lastDeleted = null; // stores last deleted item for undo
+    let lastDeleted = null;
 
     const loginScreen = document.getElementById("login-screen");
     const app = document.getElementById("app");
@@ -605,17 +605,6 @@
     const countPill = document.getElementById("count-pill");
     const undoBtn = document.getElementById("undo-btn");
     const statusText = document.getElementById("status-text");
-
-    function escapeHtml(str) {
-      if (str == null) return "";
-      return str
-        .toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
 
     function showApp() {
       loginScreen.classList.add("hidden");
@@ -660,7 +649,6 @@
         statusText.textContent = "Saving piece…";
         const res = await fetch(API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "add", item: entry })
         });
         const json = await res.json();
@@ -684,7 +672,6 @@
         statusText.textContent = "Deleting piece…";
         const res = await fetch(API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "delete", id })
         });
         const json = await res.json();
